@@ -25,6 +25,14 @@ def rows_to_dicts(rows):
     return [dict(row) for row in rows]
 
 
+def ensure_column_exists(conn, table_name, column_name, column_def):
+    cols = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+    col_names = [col["name"] for col in cols]
+    if column_name not in col_names:
+        conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_def}")
+        conn.commit()
+
+
 def init_db():
     conn = get_db()
     cur = conn.cursor()
@@ -46,6 +54,7 @@ def init_db():
         status TEXT DEFAULT 'Seeking',
         skills TEXT,
         address TEXT,
+        added_by TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
@@ -119,12 +128,18 @@ def init_db():
     """)
 
     conn.commit()
+
+    ensure_column_exists(conn, "students", "added_by", "TEXT")
+
     conn.close()
 
 
 @app.route("/")
 def home():
-    return send_from_directory(STATIC_DIR, "index.html")
+    index_path = STATIC_DIR / "index.html"
+    if index_path.exists():
+        return send_from_directory(STATIC_DIR, "index.html")
+    return jsonify({"message": "Backend is running", "status": "ok"}), 200
 
 
 @app.route("/style.css")
@@ -145,9 +160,235 @@ def serve_files(filename):
     return jsonify({"error": "File not found"}), 404
 
 
-@app.route("/api/health")
+@app.route("/api/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"})
+
+
+@app.route("/api/students", methods=["GET"])
+def get_students():
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT id, prn, name, email, phone, branch, year, division, cgpa,
+               backlogs, ssc, hsc, status, skills, address, added_by, created_at
+        FROM students
+        ORDER BY id DESC
+    """).fetchall()
+    conn.close()
+    return jsonify(rows_to_dicts(rows))
+
+
+@app.route("/api/students/<int:student_id>", methods=["GET"])
+def get_student(student_id):
+    conn = get_db()
+    row = conn.execute("""
+        SELECT id, prn, name, email, phone, branch, year, division, cgpa,
+               backlogs, ssc, hsc, status, skills, address, added_by, created_at
+        FROM students
+        WHERE id = ?
+    """, (student_id,)).fetchone()
+    conn.close()
+
+    if not row:
+        return jsonify({"error": "Student not found"}), 404
+
+    return jsonify(dict(row))
+
+
+@app.route("/api/students", methods=["POST"])
+def create_student():
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "Request body is required"}), 400
+
+    if not data.get("prn") or not data.get("name"):
+        return jsonify({"error": "prn and name are required"}), 400
+
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO students
+            (prn, name, email, phone, branch, year, division, cgpa, backlogs,
+             ssc, hsc, status, skills, address, added_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            data.get("prn"),
+            data.get("name"),
+            data.get("email"),
+            data.get("phone"),
+            data.get("branch"),
+            data.get("year"),
+            data.get("division"),
+            data.get("cgpa"),
+            data.get("backlogs", 0),
+            data.get("ssc"),
+            data.get("hsc"),
+            data.get("status", "Seeking"),
+            data.get("skills"),
+            data.get("address"),
+            data.get("added_by", "Unknown")
+        ))
+        conn.commit()
+        student_id = cur.lastrowid
+
+        created = conn.execute("""
+            SELECT id, prn, name, email, phone, branch, year, division, cgpa,
+                   backlogs, ssc, hsc, status, skills, address, added_by, created_at
+            FROM students
+            WHERE id = ?
+        """, (student_id,)).fetchone()
+
+        conn.close()
+        return jsonify({
+            "message": "Student created successfully",
+            "student": dict(created)
+        }), 201
+
+    except sqlite3.IntegrityError:
+        return jsonify({"error": "PRN already exists"}), 409
+
+
+@app.route("/api/students/<int:student_id>", methods=["PUT"])
+def update_student(student_id):
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "Request body is required"}), 400
+
+    conn = get_db()
+    existing = conn.execute("SELECT * FROM students WHERE id = ?", (student_id,)).fetchone()
+
+    if not existing:
+        conn.close()
+        return jsonify({"error": "Student not found"}), 404
+
+    try:
+        conn.execute("""
+            UPDATE students
+            SET prn = ?, name = ?, email = ?, phone = ?, branch = ?, year = ?,
+                division = ?, cgpa = ?, backlogs = ?, ssc = ?, hsc = ?, status = ?,
+                skills = ?, address = ?, added_by = ?
+            WHERE id = ?
+        """, (
+            data.get("prn", existing["prn"]),
+            data.get("name", existing["name"]),
+            data.get("email", existing["email"]),
+            data.get("phone", existing["phone"]),
+            data.get("branch", existing["branch"]),
+            data.get("year", existing["year"]),
+            data.get("division", existing["division"]),
+            data.get("cgpa", existing["cgpa"]),
+            data.get("backlogs", existing["backlogs"]),
+            data.get("ssc", existing["ssc"]),
+            data.get("hsc", existing["hsc"]),
+            data.get("status", existing["status"]),
+            data.get("skills", existing["skills"]),
+            data.get("address", existing["address"]),
+            data.get("added_by", existing["added_by"]),
+            student_id
+        ))
+        conn.commit()
+
+        updated = conn.execute("""
+            SELECT id, prn, name, email, phone, branch, year, division, cgpa,
+                   backlogs, ssc, hsc, status, skills, address, added_by, created_at
+            FROM students
+            WHERE id = ?
+        """, (student_id,)).fetchone()
+
+        conn.close()
+        return jsonify({
+            "message": "Student updated successfully",
+            "student": dict(updated)
+        })
+
+    except sqlite3.IntegrityError:
+        conn.close()
+        return jsonify({"error": "PRN already exists"}), 409
+
+
+@app.route("/api/students/<int:student_id>", methods=["DELETE"])
+def delete_student(student_id):
+    conn = get_db()
+    existing = conn.execute("SELECT * FROM students WHERE id = ?", (student_id,)).fetchone()
+
+    if not existing:
+        conn.close()
+        return jsonify({"error": "Student not found"}), 404
+
+    conn.execute("DELETE FROM students WHERE id = ?", (student_id,))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Student deleted successfully"})
+
+
+@app.route("/api/companies", methods=["GET"])
+def get_companies():
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM companies ORDER BY id DESC").fetchall()
+    conn.close()
+    return jsonify(rows_to_dicts(rows))
+
+
+@app.route("/api/companies", methods=["POST"])
+def create_company():
+    data = request.get_json()
+
+    if not data or not data.get("name"):
+        return jsonify({"error": "Company name is required"}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO companies
+        (name, sector, location, contact_person, email, phone, min_cgpa, openings, status, about, roles)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        data.get("name"),
+        data.get("sector"),
+        data.get("location"),
+        data.get("contact_person"),
+        data.get("email"),
+        data.get("phone"),
+        data.get("min_cgpa"),
+        data.get("openings", 0),
+        data.get("status", "Active"),
+        data.get("about"),
+        data.get("roles")
+    ))
+    conn.commit()
+    new_id = cur.lastrowid
+    conn.close()
+
+    return jsonify({"message": "Company created", "id": new_id}), 201
+
+
+@app.route("/api/users", methods=["GET"])
+def get_users():
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM users ORDER BY id DESC").fetchall()
+    conn.close()
+    return jsonify(rows_to_dicts(rows))
+
+
+@app.route("/api/stats", methods=["GET"])
+def get_stats():
+    conn = get_db()
+
+    total_students = conn.execute("SELECT COUNT(*) AS count FROM students").fetchone()["count"]
+    total_companies = conn.execute("SELECT COUNT(*) AS count FROM companies").fetchone()["count"]
+    total_placements = conn.execute("SELECT COUNT(*) AS count FROM placements").fetchone()["count"]
+
+    conn.close()
+
+    return jsonify({
+        "total_students": total_students,
+        "total_companies": total_companies,
+        "total_placements": total_placements
+    })
 
 
 if __name__ == "__main__":
