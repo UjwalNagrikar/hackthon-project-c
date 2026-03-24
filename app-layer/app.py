@@ -1,19 +1,14 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import sqlite3
-import os
 from pathlib import Path
+import os
 
 BASE_DIR = Path(__file__).resolve().parent
-PROJECT_DIR = BASE_DIR.parent
-STATIC_DIR = PROJECT_DIR / "static"
-
-# Use environment variable for database path, default to data directory
-DB_DIR = os.getenv('DB_DIR', str(BASE_DIR / "data"))
-DB_PATH = Path(DB_DIR) / "placement.db"
-
-# Ensure database directory exists
-DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+STATIC_DIR = BASE_DIR / "static"
+DB_DIR = Path(os.getenv("DB_DIR", BASE_DIR / "data"))
+DB_DIR.mkdir(parents=True, exist_ok=True)
+DB_PATH = DB_DIR / "placement.db"
 
 app = Flask(__name__)
 CORS(app)
@@ -128,84 +123,33 @@ def init_db():
 
 
 @app.route("/")
-def index():
+def home():
     return send_from_directory(STATIC_DIR, "index.html")
 
 
-@app.route("/static/<path:filename>")
-def serve_static(filename):
-    return send_from_directory(STATIC_DIR, filename)
-
-
 @app.route("/style.css")
-def style():
+def serve_css():
     return send_from_directory(STATIC_DIR, "style.css")
 
 
 @app.route("/app.js")
-def script():
+def serve_js():
     return send_from_directory(STATIC_DIR, "app.js")
 
 
-# ---------------- STUDENTS ----------------
-@app.route("/api/students", methods=["GET"])
-def get_students():
-    conn = get_db()
-    rows = conn.execute("SELECT * FROM students ORDER BY id DESC").fetchall()
-    conn.close()
-    return jsonify(rows_to_dicts(rows))
+@app.route("/<path:filename>")
+def serve_files(filename):
+    file_path = STATIC_DIR / filename
+    if file_path.exists():
+        return send_from_directory(STATIC_DIR, filename)
+    return jsonify({"error": "File not found"}), 404
 
 
-@app.route("/api/students", methods=["POST"])
-def create_student():
-    data = request.get_json()
-
-    if not data or not data.get("prn") or not data.get("name"):
-        return jsonify({"error": "prn and name are required"}), 400
-
-    try:
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute("""
-            INSERT INTO students
-            (prn, name, email, phone, branch, year, division, cgpa, backlogs, ssc, hsc, status, skills, address)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            data.get("prn"),
-            data.get("name"),
-            data.get("email"),
-            data.get("phone"),
-            data.get("branch"),
-            data.get("year"),
-            data.get("division"),
-            data.get("cgpa"),
-            data.get("backlogs", 0),
-            data.get("ssc"),
-            data.get("hsc"),
-            data.get("status", "Seeking"),
-            data.get("skills"),
-            data.get("address")
-        ))
-        conn.commit()
-        new_id = cur.lastrowid
-        conn.close()
-        return jsonify({"message": "Student created", "id": new_id}), 201
-    except sqlite3.IntegrityError:
-        return jsonify({"error": "PRN already exists"}), 409
-
-
-@app.route("/api/students/<int:student_id>", methods=["DELETE"])
-def delete_student(student_id):
-    conn = get_db()
-    cur = conn.execute("DELETE FROM students WHERE id = ?", (student_id,))
-    conn.commit()
-    conn.close()
-
-    if cur.rowcount == 0:
-        return jsonify({"error": "Student not found"}), 404
-    return jsonify({"message": "Student deleted"})
+@app.route("/api/health")
+def health():
+    return jsonify({"status": "ok"})
 
 
 if __name__ == "__main__":
     init_db()
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=False)
