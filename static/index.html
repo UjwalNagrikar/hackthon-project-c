@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IPTS — Internship &amp; Placement Tracking System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     SIDEBAR
+══════════════════════════════════════ -->
+<nav id="sidebar">
+  <div class="logo">
+    <div class="logo-mark">IPTS v1.0</div>
+    <div class="logo-name">Placement Hub</div>
+    <div class="logo-sub">G.H. Raisoni College</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Overview</div>
+    <div class="nav-item active" onclick="navigate('dashboard')">
+      <span class="icon">⊞</span> Admin Dashboard
+    </div>
+    <div class="nav-item" onclick="navigate('student-dash')">
+      <span class="icon">◎</span> Student Dashboard
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Records</div>
+    <div class="nav-item" onclick="navigate('students')">
+      <span class="icon">👤</span> Students
+      <span class="nav-badge" id="badge-students">0</span>
+    </div>
+    <div class="nav-item" onclick="navigate('companies')">
+      <span class="icon">🏢</span> Companies
+      <span class="nav-badge" id="badge-companies">0</span>
+    </div>
+    <div class="nav-item" onclick="navigate('internships')">
+      <span class="icon">📋</span> Internships
+      <span class="nav-badge" id="badge-internships">0</span>
+    </div>
+    <div class="nav-item" onclick="navigate('placements')">
+      <span class="icon">🎯</span> Placements
+      <span class="nav-badge" id="badge-placements">0</span>
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Tools</div>
+    <div class="nav-item" onclick="navigate('search')">
+      <span class="icon">🔍</span> Search &amp; Filter
+    </div>
+    <div class="nav-item" onclick="navigate('reports')">
+      <span class="icon">📊</span> Reports
+    </div>
+    <div class="nav-item" onclick="navigate('admin')">
+      <span class="icon">⚙</span> Admin Settings
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="admin-badge">
+      <div class="admin-avatar">AD</div>
+      <div class="admin-info">
+        <div class="admin-name">Admin User</div>
+        <div class="admin-role">Placement Officer</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════
+     MAIN AREA
+══════════════════════════════════════ -->
+<div id="main">
+
+  <!-- Top Bar -->
+  <div class="topbar">
+    <div>
+      <span class="topbar-title" id="topbar-title">Admin Dashboard</span>
+      <span class="topbar-sub"   id="topbar-sub">· Overview</span>
+    </div>
+    <div class="topbar-actions" id="topbar-actions"></div>
+  </div>
+
+  <!-- Pages Container -->
+  <div class="content">
+
+    <!-- ── MODULE 8: ADMIN DASHBOARD ── -->
+    <div class="page active" id="page-dashboard">
+      <div class="stats-grid" id="dash-stats"></div>
+      <div class="section-grid">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">📊 Placement Rate by Branch</span>
+          </div>
+          <div class="panel-body">
+            <div class="chart-box"><canvas id="chartBranch"></canvas></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">📈 Monthly Placements</span>
+          </div>
+          <div class="panel-body">
+            <div class="chart-box"><canvas id="chartMonthly"></canvas></div>
+          </div>
+        </div>
+      </div>
+      <div class="section-grid">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">🕐 Recent Activity</span>
+          </div>
+          <div class="panel-body">
+            <div class="activity-list" id="activity-list"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">🏆 Top Hiring Companies</span>
+          </div>
+          <div class="panel-body">
+            <div id="top-companies-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MODULE 2: STUDENTS ── -->
+    <div class="page" id="page-students">
+      <div class="search-bar">
+        <div class="search-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="student-search" placeholder="Search by name, PRN, email, branch…" oninput="renderStudentTable()">
+        </div>
+        <select id="student-filter-branch" onchange="renderStudentTable()">
+          <option value="">All Branches</option>
+          <option>Computer Science</option>
+          <option>Information Technology</option>
+          <option>Electronics</option>
+          <option>Mechanical</option>
+          <option>Civil</option>
+          <option>MBA</option>
+          <option>MCA</option>
+          <option>BCCA</option>
+        </select>
+        <select id="student-filter-status" onchange="renderStudentTable()">
+          <option value="">All Status</option>
+          <option>Placed</option>
+          <option>Interning</option>
+          <option>Seeking</option>
+          <option>Not Seeking</option>
+        </select>
+      </div>
+      <div class="panel">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>PRN</th>
+                <th>Student Name</th>
+                <th>Branch</th>
+                <th>Year / Div</th>
+                <th>CGPA</th>
+                <th>Contact</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="student-table-body"></tbody>
+          </table>
+        </div>
+        <div id="student-empty" class="empty-state" style="display:none">
+          <div class="empty-icon">👤</div>
+          <p>No students found. Add one to get started.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MODULE 3: COMPANIES ── -->
+    <div class="page" id="page-companies">
+      <div class="search-bar">
+        <div class="search-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="company-search" placeholder="Search company name, sector, location…" oninput="renderCompanyTable()">
+        </div>
+        <select id="company-filter-sector" onchange="renderCompanyTable()">
+          <option value="">All Sectors</option>
+          <option>IT / Software</option>
+          <option>Manufacturing</option>
+          <option>Banking / Finance</option>
+          <option>Consulting</option>
+          <option>Healthcare</option>
+          <option>E-Commerce</option>
+          <option>Telecom</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="panel">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Company Name</th>
+                <th>Sector</th>
+                <th>Location</th>
+                <th>Contact Person</th>
+                <th>Email</th>
+                <th>Openings</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="company-table-body"></tbody>
+          </table>
+        </div>
+        <div id="company-empty" class="empty-state" style="display:none">
+          <div class="empty-icon">🏢</div>
+          <p>No companies registered yet.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MODULE 4: INTERNSHIPS ── -->
+    <div class="page" id="page-internships">
+      <div class="search-bar">
+        <div class="search-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="intern-search" placeholder="Search by student, company, role…" oninput="renderInternTable()">
+        </div>
+        <select id="intern-filter-status" onchange="renderInternTable()">
+          <option value="">All Status</option>
+          <option>Ongoing</option>
+          <option>Completed</option>
+          <option>Offer Received</option>
+          <option>Terminated</option>
+        </select>
+      </div>
+      <div class="panel">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Company</th>
+                <th>Role / Position</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Stipend</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="intern-table-body"></tbody>
+          </table>
+        </div>
+        <div id="intern-empty" class="empty-state" style="display:none">
+          <div class="empty-icon">📋</div>
+          <p>No internships recorded yet.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MODULE 5: PLACEMENTS ── -->
+    <div class="page" id="page-placements">
+      <div class="search-bar">
+        <div class="search-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="place-search" placeholder="Search by student, company, package…" oninput="renderPlaceTable()">
+        </div>
+        <select id="place-filter-type" onchange="renderPlaceTable()">
+          <option value="">All Types</option>
+          <option>On-Campus</option>
+          <option>Off-Campus</option>
+          <option>PPO (Pre-Placement Offer)</option>
+          <option>Lateral</option>
+        </select>
+      </div>
+      <div class="panel">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Company</th>
+                <th>Role</th>
+                <th>Package (LPA)</th>
+                <th>Type</th>
+                <th>Offer Date</th>
+                <th>Joining Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="place-table-body"></tbody>
+          </table>
+        </div>
+        <div id="place-empty" class="empty-state" style="display:none">
+          <div class="empty-icon">🎯</div>
+          <p>No placement records yet.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MODULE 6: SEARCH & FILTER ── -->
+    <div class="page" id="page-search">
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-body">
+          <div style="display:flex;gap:10px;align-items:center;">
+            <div class="search-input-wrap" style="flex:1">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="global-search"
+                placeholder="Search across all records — students, companies, internships, placements…"
+                style="font-size:15px;padding:12px 12px 12px 36px;"
+                oninput="globalSearch()">
+            </div>
+            <select id="global-filter-type" onchange="globalSearch()" style="width:160px;">
+              <option value="">All Types</option>
+              <option value="students">Students</option>
+              <option value="companies">Companies</option>
+              <option value="internships">Internships</option>
+              <option value="placements">Placements</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div id="global-results"></div>
+    </div>
+
+    <!-- ── MODULE 7: REPORTS ── -->
+    <div class="page" id="page-reports">
+      <div class="tabs">
+        <div class="tab active" onclick="switchReportTab('overview', this)">📊 Overview</div>
+        <div class="tab"        onclick="switchReportTab('charts', this)">📈 Charts</div>
+        <div class="tab"        onclick="switchReportTab('export', this)">📤 Export</div>
+      </div>
+
+      <!-- Overview Tab -->
+      <div id="report-overview">
+        <div class="stats-grid" id="report-stats-grid"></div>
+        <div class="section-grid">
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Placement Status Breakdown</span></div>
+            <div class="panel-body"><div class="chart-box"><canvas id="chartPieStatus"></canvas></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Package Distribution (LPA)</span></div>
+            <div class="panel-body"><div class="chart-box"><canvas id="chartPackage"></canvas></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Tab -->
+      <div id="report-charts" style="display:none;">
+        <div class="section-grid">
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Branch-wise Placement %</span></div>
+            <div class="panel-body"><div style="height:250px"><canvas id="chartBranch2"></canvas></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Sector-wise Hiring</span></div>
+            <div class="panel-body"><div style="height:250px"><canvas id="chartSector"></canvas></div></div>
+          </div>
+        </div>
+        <div class="panel" style="margin-top:16px;">
+          <div class="panel-header"><span class="panel-title">Month-wise Placement Trend</span></div>
+          <div class="panel-body"><div style="height:220px"><canvas id="chartTrend"></canvas></div></div>
+        </div>
+      </div>
+
+      <!-- Export Tab -->
+      <div id="report-export" style="display:none;">
+        <div class="report-grid">
+          <div class="report-card" onclick="exportReport('student-list')">
+            <div class="report-icon">📄</div>
+            <div class="report-name">Student Master List</div>
+            <div class="report-desc">All student records with placement status</div>
+          </div>
+          <div class="report-card" onclick="exportReport('placement-report')">
+            <div class="report-icon">🎯</div>
+            <div class="report-name">Placement Report</div>
+            <div class="report-desc">Complete placement details with packages</div>
+          </div>
+          <div class="report-card" onclick="exportReport('company-report')">
+            <div class="report-icon">🏢</div>
+            <div class="report-name">Company Engagement Report</div>
+            <div class="report-desc">Company-wise hiring summary</div>
+          </div>
+          <div class="report-card" onclick="exportReport('internship-report')">
+            <div class="report-icon">📋</div>
+            <div class="report-name">Internship Status Report</div>
+            <div class="report-desc">Active and completed internships</div>
+          </div>
+          <div class="report-card" onclick="exportReport('unplaced-report')">
+            <div class="report-icon">⚠️</div>
+            <div class="report-name">Unplaced Students List</div>
+            <div class="report-desc">Students still seeking opportunities</div>
+          </div>
+          <div class="report-card" onclick="exportReport('summary-report')">
+            <div class="report-icon">📊</div>
+            <div class="report-name">Annual Summary Report</div>
+            <div class="report-desc">Comprehensive yearly statistics</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MODULE 1: ADMIN SETTINGS ── -->
+    <div class="page" id="page-admin">
+      <div class="tabs">
+        <div class="tab active" onclick="switchAdminTab('users', this)">👥 Users</div>
+        <div class="tab"        onclick="switchAdminTab('settings', this)">⚙️ Settings</div>
+        <div class="tab"        onclick="switchAdminTab('data', this)">💾 Data Management</div>
+      </div>
+
+      <!-- Users Tab -->
+      <div id="admin-users">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">System Users</span>
+            <button class="btn btn-primary btn-sm" onclick="openUserModal()" style="margin-left:auto">+ Add User</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th><th>Username</th><th>Role</th>
+                  <th>Department</th><th>Last Login</th><th>Status</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="user-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Tab -->
+      <div id="admin-settings" style="display:none;">
+        <div class="section-grid">
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Academic Year Settings</span></div>
+            <div class="panel-body">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Current Academic Year</label>
+                  <input type="text" id="setting-year" value="2024-25">
+                </div>
+                <div class="form-group">
+                  <label>Batch</label>
+                  <input type="text" id="setting-batch" value="2021-25">
+                </div>
+                <div class="form-group">
+                  <label>Placement Drive Start</label>
+                  <input type="date" id="setting-drive-start" value="2024-08-01">
+                </div>
+                <div class="form-group">
+                  <label>Placement Drive End</label>
+                  <input type="date" id="setting-drive-end" value="2025-04-30">
+                </div>
+              </div>
+              <div class="form-actions" style="margin-top:14px;">
+                <button class="btn btn-primary" onclick="toast('Settings saved!','success')">Save Settings</button>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">College Information</span></div>
+            <div class="panel-body">
+              <div class="form-grid">
+                <div class="form-group full">
+                  <label>College Name</label>
+                  <input type="text" value="G. H. Raisoni College of Engineering &amp; Management">
+                </div>
+                <div class="form-group">
+                  <label>City</label>
+                  <input type="text" value="Nagpur">
+                </div>
+                <div class="form-group">
+                  <label>Contact Email</label>
+                  <input type="email" value="placement@raisoni.net">
+                </div>
+              </div>
+              <div class="form-actions" style="margin-top:14px;">
+                <button class="btn btn-primary" onclick="toast('College info updated!','success')">Update</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data Management Tab -->
+      <div id="admin-data" style="display:none;">
+        <div class="section-grid thirds">
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">💾 Backup Data</span></div>
+            <div class="panel-body">
+              <p style="font-size:13px;color:var(--sub);margin-bottom:14px;">Export all system data as a JSON backup file.</p>
+              <button class="btn btn-ghost" onclick="backupData()">⬇ Download Backup</button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">📥 Load Sample Data</span></div>
+            <div class="panel-body">
+              <p style="font-size:13px;color:var(--sub);margin-bottom:14px;">Populate system with sample records for demonstration.</p>
+              <button class="btn btn-success" onclick="loadSampleData()">Load Sample Data</button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">🗑 Clear All Data</span></div>
+            <div class="panel-body">
+              <p style="font-size:13px;color:var(--sub);margin-bottom:14px;">Permanently remove all records from the system.</p>
+              <button class="btn btn-danger" onclick="confirmClear()">Clear All Data</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MODULE 9: STUDENT DASHBOARD ── -->
+    <div class="page" id="page-student-dash">
+      <div style="display:flex;gap:10px;margin-bottom:18px;align-items:center;">
+        <div class="search-input-wrap" style="max-width:300px;">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="dash-student-search" placeholder="Enter PRN or name…">
+        </div>
+        <button class="btn btn-primary" onclick="loadStudentDash()">View Dashboard</button>
+      </div>
+      <div id="student-dash-content">
+        <div class="empty-state">
+          <div class="empty-icon">◎</div>
+          <p>Enter a student PRN or name to view their dashboard</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- ══════════════════════════════════════
+     MODALS
+══════════════════════════════════════ -->
+
+<!-- Student Modal -->
+<div class="modal-backdrop" id="modal-student">
+  <div class="modal wide">
+    <div class="modal-header">
+      <span class="modal-title" id="student-modal-title">Add Student</span>
+      <button class="modal-close" onclick="closeModal('modal-student')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid cols3">
+        <div class="form-group"><label>PRN / Roll No *</label><input id="s-prn" placeholder="e.g. BCCA2024001"></div>
+        <div class="form-group"><label>Full Name *</label><input id="s-name" placeholder="Student full name"></div>
+        <div class="form-group"><label>Email *</label><input id="s-email" type="email" placeholder="student@email.com"></div>
+        <div class="form-group"><label>Phone</label><input id="s-phone" placeholder="+91 XXXXXXXXXX"></div>
+        <div class="form-group">
+          <label>Branch / Department *</label>
+          <select id="s-branch">
+            <option>Computer Science</option><option>Information Technology</option>
+            <option>Electronics</option><option>Mechanical</option>
+            <option>Civil</option><option>MBA</option><option>MCA</option><option selected>BCCA</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Year</label>
+          <select id="s-year">
+            <option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option selected>Final Year</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Division</label><input id="s-div" placeholder="A / B / C"></div>
+        <div class="form-group"><label>CGPA</label><input id="s-cgpa" type="number" step="0.01" min="0" max="10" placeholder="8.5"></div>
+        <div class="form-group"><label>Backlogs</label><input id="s-backlogs" type="number" value="0" min="0"></div>
+        <div class="form-group"><label>10th %</label><input id="s-ssc" type="number" step="0.01" placeholder="85.00"></div>
+        <div class="form-group"><label>12th / Diploma %</label><input id="s-hsc" type="number" step="0.01" placeholder="78.00"></div>
+        <div class="form-group">
+          <label>Placement Status</label>
+          <select id="s-status">
+            <option>Seeking</option><option>Interning</option><option>Placed</option><option>Not Seeking</option>
+          </select>
+        </div>
+        <div class="form-group full"><label>Skills (comma separated)</label><input id="s-skills" placeholder="Python, Docker, SQL, AWS…"></div>
+        <div class="form-group full"><label>Address</label><textarea id="s-address" rows="2" placeholder="City, State"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-student')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveStudent()">Save Student</button>
+    </div>
+  </div>
+</div>
+
+<!-- Company Modal -->
+<div class="modal-backdrop" id="modal-company">
+  <div class="modal wide">
+    <div class="modal-header">
+      <span class="modal-title" id="company-modal-title">Add Company</span>
+      <button class="modal-close" onclick="closeModal('modal-company')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid cols3">
+        <div class="form-group"><label>Company Name *</label><input id="c-name" placeholder="Acme Corp"></div>
+        <div class="form-group">
+          <label>Sector *</label>
+          <select id="c-sector">
+            <option>IT / Software</option><option>Manufacturing</option><option>Banking / Finance</option>
+            <option>Consulting</option><option>Healthcare</option><option>E-Commerce</option><option>Telecom</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Location</label><input id="c-location" placeholder="Mumbai, Maharashtra"></div>
+        <div class="form-group"><label>Contact Person</label><input id="c-contact" placeholder="HR Manager name"></div>
+        <div class="form-group"><label>Contact Email</label><input id="c-email" type="email" placeholder="hr@company.com"></div>
+        <div class="form-group"><label>Contact Phone</label><input id="c-phone" placeholder="+91 XXXXXXXXXX"></div>
+        <div class="form-group"><label>Min CGPA Required</label><input id="c-mincgpa" type="number" step="0.1" placeholder="6.5"></div>
+        <div class="form-group"><label>Open Positions</label><input id="c-openings" type="number" value="1" min="0"></div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="c-status">
+            <option>Active</option><option>Drive Completed</option><option>Blacklisted</option>
+          </select>
+        </div>
+        <div class="form-group full"><label>About Company</label><textarea id="c-about" placeholder="Brief description…"></textarea></div>
+        <div class="form-group full"><label>Job Roles Offered (comma separated)</label><input id="c-roles" placeholder="Software Engineer, Data Analyst…"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-company')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCompany()">Save Company</button>
+    </div>
+  </div>
+</div>
+
+<!-- Internship Modal -->
+<div class="modal-backdrop" id="modal-intern">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="intern-modal-title">Add Internship</span>
+      <button class="modal-close" onclick="closeModal('modal-intern')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Student *</label>
+          <select id="i-student"><option value="">-- Select Student --</option></select>
+        </div>
+        <div class="form-group">
+          <label>Company *</label>
+          <select id="i-company"><option value="">-- Select Company --</option></select>
+        </div>
+        <div class="form-group"><label>Role / Position *</label><input id="i-role" placeholder="Software Engineer Intern"></div>
+        <div class="form-group"><label>Stipend (₹/month)</label><input id="i-stipend" type="number" placeholder="15000"></div>
+        <div class="form-group"><label>Start Date</label><input id="i-start" type="date"></div>
+        <div class="form-group"><label>End Date</label><input id="i-end" type="date"></div>
+        <div class="form-group">
+          <label>Mode</label>
+          <select id="i-mode"><option>In-Office</option><option>Remote</option><option>Hybrid</option></select>
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="i-status"><option>Ongoing</option><option>Completed</option><option>Offer Received</option><option>Terminated</option></select>
+        </div>
+        <div class="form-group full"><label>Remarks</label><textarea id="i-remarks" placeholder="Any notes…"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-intern')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveIntern()">Save Internship</button>
+    </div>
+  </div>
+</div>
+
+<!-- Placement Modal -->
+<div class="modal-backdrop" id="modal-place">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="place-modal-title">Add Placement</span>
+      <button class="modal-close" onclick="closeModal('modal-place')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Student *</label>
+          <select id="p-student"><option value="">-- Select Student --</option></select>
+        </div>
+        <div class="form-group">
+          <label>Company *</label>
+          <select id="p-company"><option value="">-- Select Company --</option></select>
+        </div>
+        <div class="form-group"><label>Role *</label><input id="p-role" placeholder="Software Engineer"></div>
+        <div class="form-group"><label>CTC Package (LPA) *</label><input id="p-ctc" type="number" step="0.1" placeholder="6.5"></div>
+        <div class="form-group">
+          <label>Placement Type</label>
+          <select id="p-type"><option>On-Campus</option><option>Off-Campus</option><option>PPO (Pre-Placement Offer)</option><option>Lateral</option></select>
+        </div>
+        <div class="form-group"><label>Offer Date</label><input id="p-offer-date" type="date"></div>
+        <div class="form-group"><label>Joining Date</label><input id="p-join-date" type="date"></div>
+        <div class="form-group"><label>Location</label><input id="p-location" placeholder="City, State"></div>
+        <div class="form-group full"><label>Remarks</label><textarea id="p-remarks" placeholder="Any notes…"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-place')">Cancel</button>
+      <button class="btn btn-primary" onclick="savePlace()">Save Placement</button>
+    </div>
+  </div>
+</div>
+
+<!-- User Modal -->
+<div class="modal-backdrop" id="modal-user">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Add System User</span>
+      <button class="modal-close" onclick="closeModal('modal-user')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Full Name *</label><input id="u-name" placeholder="John Doe"></div>
+        <div class="form-group"><label>Username *</label><input id="u-username" placeholder="johndoe"></div>
+        <div class="form-group">
+          <label>Role</label>
+          <select id="u-role"><option>Admin</option><option>Placement Officer</option><option>Faculty</option><option>Student</option></select>
+        </div>
+        <div class="form-group"><label>Department</label><input id="u-dept" placeholder="Computer Science"></div>
+        <div class="form-group"><label>Email</label><input id="u-email" type="email" placeholder="user@college.com"></div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="u-status"><option>Active</option><option>Inactive</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-user')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveUser()">Add User</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Dialog -->
+<div class="confirm-dialog" id="confirm-dialog">
+  <div class="confirm-box">
+    <h3 id="confirm-title">Confirm Action</h3>
+    <p  id="confirm-msg">Are you sure you want to proceed?</p>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost"  onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok-btn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
