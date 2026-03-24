@@ -5,7 +5,7 @@ from pathlib import Path
 import os
 
 BASE_DIR = Path(__file__).resolve().parent
-STATIC_DIR = BASE_DIR / "static"
+STATIC_DIR = BASE_DIR.parent / "static"
 DB_DIR = Path(os.getenv("DB_DIR", BASE_DIR / "data"))
 DB_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH = DB_DIR / "placement.db"
@@ -117,7 +117,7 @@ def init_db():
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
-        username TEXT UNIQUE NOT NULL,
+        username TEXT UNIQUE,
         role TEXT,
         department TEXT,
         email TEXT,
@@ -134,35 +134,20 @@ def init_db():
     conn.close()
 
 
-@app.route("/")
+@app.route("/", methods=["GET"])
 def home():
     index_path = STATIC_DIR / "index.html"
     if index_path.exists():
         return send_from_directory(STATIC_DIR, "index.html")
-    return jsonify({"message": "Backend is running", "status": "ok"}), 200
-
-
-@app.route("/style.css")
-def serve_css():
-    return send_from_directory(STATIC_DIR, "style.css")
-
-
-@app.route("/app.js")
-def serve_js():
-    return send_from_directory(STATIC_DIR, "app.js")
-
-
-@app.route("/<path:filename>")
-def serve_files(filename):
-    file_path = STATIC_DIR / filename
-    if file_path.exists():
-        return send_from_directory(STATIC_DIR, filename)
-    return jsonify({"error": "File not found"}), 404
+    return jsonify({"message": "Backend running", "status": "ok"}), 200
 
 
 @app.route("/api/health", methods=["GET"])
 def health():
-    return jsonify({"status": "ok"})
+    return jsonify({
+        "status": "ok",
+        "db_path": str(DB_PATH)
+    }), 200
 
 
 @app.route("/api/students", methods=["GET"])
@@ -175,7 +160,7 @@ def get_students():
         ORDER BY id DESC
     """).fetchall()
     conn.close()
-    return jsonify(rows_to_dicts(rows))
+    return jsonify(rows_to_dicts(rows)), 200
 
 
 @app.route("/api/students/<int:student_id>", methods=["GET"])
@@ -192,7 +177,7 @@ def get_student(student_id):
     if not row:
         return jsonify({"error": "Student not found"}), 404
 
-    return jsonify(dict(row))
+    return jsonify(dict(row)), 200
 
 
 @app.route("/api/students", methods=["POST"])
@@ -228,17 +213,17 @@ def create_student():
             data.get("status", "Seeking"),
             data.get("skills"),
             data.get("address"),
-            data.get("added_by", "Unknown")
+            data.get("added_by", "Admin")
         ))
         conn.commit()
-        student_id = cur.lastrowid
+        new_id = cur.lastrowid
 
         created = conn.execute("""
             SELECT id, prn, name, email, phone, branch, year, division, cgpa,
                    backlogs, ssc, hsc, status, skills, address, added_by, created_at
             FROM students
             WHERE id = ?
-        """, (student_id,)).fetchone()
+        """, (new_id,)).fetchone()
 
         conn.close()
         return jsonify({
@@ -302,7 +287,7 @@ def update_student(student_id):
         return jsonify({
             "message": "Student updated successfully",
             "student": dict(updated)
-        })
+        }), 200
 
     except sqlite3.IntegrityError:
         conn.close()
@@ -322,15 +307,20 @@ def delete_student(student_id):
     conn.commit()
     conn.close()
 
-    return jsonify({"message": "Student deleted successfully"})
+    return jsonify({"message": "Student deleted successfully"}), 200
 
 
 @app.route("/api/companies", methods=["GET"])
 def get_companies():
     conn = get_db()
-    rows = conn.execute("SELECT * FROM companies ORDER BY id DESC").fetchall()
+    rows = conn.execute("""
+        SELECT id, name, sector, location, contact_person, email, phone,
+               min_cgpa, openings, status, about, roles, created_at
+        FROM companies
+        ORDER BY id DESC
+    """).fetchall()
     conn.close()
-    return jsonify(rows_to_dicts(rows))
+    return jsonify(rows_to_dicts(rows)), 200
 
 
 @app.route("/api/companies", methods=["POST"])
@@ -361,17 +351,59 @@ def create_company():
     ))
     conn.commit()
     new_id = cur.lastrowid
+
+    created = conn.execute("""
+        SELECT id, name, sector, location, contact_person, email, phone,
+               min_cgpa, openings, status, about, roles, created_at
+        FROM companies
+        WHERE id = ?
+    """, (new_id,)).fetchone()
+
     conn.close()
 
-    return jsonify({"message": "Company created", "id": new_id}), 201
+    return jsonify({
+        "message": "Company created successfully",
+        "company": dict(created)
+    }), 201
+
+
+@app.route("/api/placements", methods=["GET"])
+def get_placements():
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT id, student_id, company_id, role, ctc, placement_type,
+               offer_date, joining_date, location, remarks, created_at
+        FROM placements
+        ORDER BY id DESC
+    """).fetchall()
+    conn.close()
+    return jsonify(rows_to_dicts(rows)), 200
+
+
+@app.route("/api/internships", methods=["GET"])
+def get_internships():
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT id, student_id, company_id, role, stipend, start_date,
+               end_date, mode, status, remarks, created_at
+        FROM internships
+        ORDER BY id DESC
+    """).fetchall()
+    conn.close()
+    return jsonify(rows_to_dicts(rows)), 200
 
 
 @app.route("/api/users", methods=["GET"])
 def get_users():
     conn = get_db()
-    rows = conn.execute("SELECT * FROM users ORDER BY id DESC").fetchall()
+    rows = conn.execute("""
+        SELECT id, name, username, role, department, email, status,
+               last_login, created_at
+        FROM users
+        ORDER BY id DESC
+    """).fetchall()
     conn.close()
-    return jsonify(rows_to_dicts(rows))
+    return jsonify(rows_to_dicts(rows)), 200
 
 
 @app.route("/api/stats", methods=["GET"])
@@ -381,14 +413,25 @@ def get_stats():
     total_students = conn.execute("SELECT COUNT(*) AS count FROM students").fetchone()["count"]
     total_companies = conn.execute("SELECT COUNT(*) AS count FROM companies").fetchone()["count"]
     total_placements = conn.execute("SELECT COUNT(*) AS count FROM placements").fetchone()["count"]
+    total_internships = conn.execute("SELECT COUNT(*) AS count FROM internships").fetchone()["count"]
 
     conn.close()
 
     return jsonify({
         "total_students": total_students,
         "total_companies": total_companies,
-        "total_placements": total_placements
-    })
+        "total_placements": total_placements,
+        "total_internships": total_internships
+    }), 200
+
+
+# KEEP STATIC FILE ROUTE LAST
+@app.route("/<path:filename>", methods=["GET"])
+def serve_static(filename):
+    file_path = STATIC_DIR / filename
+    if file_path.exists():
+        return send_from_directory(STATIC_DIR, filename)
+    return jsonify({"error": "File not found"}), 404
 
 
 if __name__ == "__main__":
